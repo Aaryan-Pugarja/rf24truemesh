@@ -186,7 +186,7 @@ bool RF24truemesh::discovery_mode_child(DataPacket_parent &data_p, DataPacket_ch
   unsigned long startMillis = millis();
 
   while (data_p.mode==0) {
-    if (radio.available()) {
+    while (radio.available()) {
       radio.read(&data_p, sizeof(data_p));
       radio.stopListening();
       if (data_p.mode == 0) {
@@ -204,21 +204,25 @@ bool RF24truemesh::discovery_mode_child(DataPacket_parent &data_p, DataPacket_ch
     }
   }
   
+  
   uint8_t pipe;
   bool assigned = false;
+  radio.startListening();
   memcpy(final_address.value, random_list[data_p.index].value, 5);
-  radio.openReadingPipe(2, final_address.value);
+  radio.openReadingPipe(1, final_address.value);
   startMillis = millis();
   while(millis() - startMillis<4000 && !assigned){
-    if(radio.available(&pipe)){
+    if(radio.available()){
       radio.read(&data_p, sizeof(data_p));
-      if(pipe == 1){
-        continue;
-      }else if(pipe == 2 && assigned == true){
+      if(data_p.unique == 0){
+        radio.stopListening();
         radio.startWrite(&data_c, sizeof(data_c), true);
         radio.txStandBy();
-        return true;
-      }   
+      }else if(data_p.unique == 1){
+        radio.stopListening();
+        radio.startWrite(&data_c, sizeof(data_c), true);
+        radio.txStandBy();
+      }
     }
   }
   if(!unassigned){

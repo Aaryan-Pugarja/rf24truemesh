@@ -173,6 +173,7 @@ bool RF24truemesh::discovery_mode_child(DataPacket_parent &data_p, DataPacket_ch
   //data_p.who = 1;
   data_c.mode = 0;
   data_c.correspond_counter = 0;
+  bool unassigned = 0;
   //data_p.self_id = default_root_address;
   //memcpy(data_c.self_id, default_root_address, 5);
   //unsigned long previousMillis = 0;
@@ -205,15 +206,15 @@ bool RF24truemesh::discovery_mode_child(DataPacket_parent &data_p, DataPacket_ch
   
   uint8_t pipe;
   bool assigned = false;
-  memcpy(final_address, random_list[data_p.index].value, 5);
-  openReadingPipe(2, final_address.value[4]);
+  memcpy(final_address.value, random_list[data_p.index].value, 5);
+  radio.openReadingPipe(2, final_address.value);
   startMillis = millis();
   while(millis() - startMillis<4000 && !assigned){
     if(radio.available(&pipe)){
       radio.read(&data_p, sizeof(data_p));
       if(pipe == 1){
         continue;
-      }else if(pipe == 2 && assigned = true){
+      }else if(pipe == 2 && assigned == true){
         radio.startWrite(&data_c, sizeof(data_c), true);
         radio.txStandBy();
         return true;

@@ -121,7 +121,7 @@ bool RF24truemesh::assignment_mode_parent(DataPacket_parent &data_p, DataPacket_
     //Unique address check(global check)
     for(Address &addr2 : usedAddresses){
       if((memcmp(addr.value, addr2.value, 5) == 0)){
-        generateRandomAddress(data_p.supply_id);
+        generateRandomAddress(data_p.supply_id); // WARNING: Does not ensure unique address in temp
         data_p.unique = 0;
         radio.flush_rx();
         break;
@@ -144,7 +144,11 @@ bool RF24truemesh::assignment_mode_parent(DataPacket_parent &data_p, DataPacket_
         if (radio.available()) { // skeptical about this, should parent send reply to reply?, should it be while(radio.available) instead and child sends multiple messages to avoid root missing message
           radio.read(&data_c, sizeof(data_c));
           heard = true;
-          usedAddresses.push_back(addr);
+          if(data_p.unique){
+            usedAddresses.push_back(addr);
+          }else{
+            usedAddresses.push_back(Address(data_p.supply_id));
+          }
         }
         vTaskDelay(pdMS_TO_TICKS(1));
       }
@@ -218,17 +222,14 @@ bool RF24truemesh::discovery_mode_child(DataPacket_parent &data_p, DataPacket_ch
   while(millis() - startMillis<4000 && !assigned){
     if(radio.available()){
       radio.read(&data_p, sizeof(data_p));
+      assigned = true;
       if(data_p.unique == 0){
-        final_address.value =      // Change default_root_address and update when receiving assignment message
-      }else if(data_p.unique == 1){
-        
+        memcpy(final_address.value, data_p.supply_id, 5);  // Change default_root_address and update when receiving assignment message
       }
       radio.stopListening();
       radio.startWrite(&data_c, sizeof(data_c), true);
       radio.txStandBy();
     }
   }
-  if(!unassigned){
-    return false;
-  }
+  return(assigned);
 }

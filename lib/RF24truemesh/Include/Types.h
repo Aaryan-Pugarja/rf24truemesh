@@ -5,6 +5,12 @@
 struct Address
 {
     byte value[5];
+
+    Address() = default;
+
+    Address(const byte (&id)[5]) {
+        memcpy(value, id, 5);
+    }
 };
 
 struct DataPacket_parent {

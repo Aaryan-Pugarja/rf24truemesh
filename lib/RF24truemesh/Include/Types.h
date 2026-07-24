@@ -13,7 +13,7 @@ struct DataPacket_parent {
   uint8_t counter;
   byte self_id[5];
   byte supply_id[5];
-  int index;
+  uint8_t index;
 
   DataPacket_parent() {
     mode = 0;

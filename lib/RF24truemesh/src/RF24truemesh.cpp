@@ -174,6 +174,7 @@ bool RF24truemesh::discovery_mode_child(DataPacket_parent &data_p, DataPacket_ch
   data_c.mode = 0;
   data_c.correspond_counter = 0;
   bool unassigned = 0;
+  uint8_t last_counter = 0;
   //data_p.self_id = default_root_address;
   //memcpy(data_c.self_id, default_root_address, 5);
   //unsigned long previousMillis = 0;
@@ -193,6 +194,9 @@ bool RF24truemesh::discovery_mode_child(DataPacket_parent &data_p, DataPacket_ch
         uint32_t waitTime = esp_random() % 61;                   //random wait time between 0 - 60ms
         vTaskDelay(pdMS_TO_TICKS(waitTime));                     //waits(non blocking)
         generateRandomAddress(data_c.random_id);                 //generates random address
+        if(data_p.counter!=data_c.correspond_counter+1){
+          return false;
+        }
         data_c.correspond_counter = data_p.counter;              //updates corresponding counter
         radio.startWrite(&data_c, sizeof(data_c), true);         //Sends broadcast message reply(random address)
         radio.txStandBy();                                       //Prevents message from not getting sent
@@ -215,14 +219,13 @@ bool RF24truemesh::discovery_mode_child(DataPacket_parent &data_p, DataPacket_ch
     if(radio.available()){
       radio.read(&data_p, sizeof(data_p));
       if(data_p.unique == 0){
-        radio.stopListening();
-        radio.startWrite(&data_c, sizeof(data_c), true);
-        radio.txStandBy();
+        final_address.value =      // Change default_root_address and update when receiving assignment message
       }else if(data_p.unique == 1){
-        radio.stopListening();
-        radio.startWrite(&data_c, sizeof(data_c), true);
-        radio.txStandBy();
+        
       }
+      radio.stopListening();
+      radio.startWrite(&data_c, sizeof(data_c), true);
+      radio.txStandBy();
     }
   }
   if(!unassigned){

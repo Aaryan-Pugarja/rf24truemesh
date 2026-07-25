@@ -1,7 +1,7 @@
 #include "RF24TrueMesh.h"
 
 
-void RF24truemesh::generateRandomAddress(byte addr[5]) {
+void RF24truemesh::generateRandomAddress(byte addr[5]) { //Generates unique address compared with usedAddresses and temp
   bool unique;
 
   do {
@@ -19,6 +19,12 @@ void RF24truemesh::generateRandomAddress(byte addr[5]) {
         break;
       }
     }
+    for (Address &a2 : temp) {
+      if (memcmp(addr, a2.value, 5) == 0) {
+        unique = false;
+        break;
+      }
+    }
 
   } while (!unique);
 }
@@ -31,7 +37,7 @@ bool RF24truemesh::discovery_mode_parent(DataPacket_parent &data_p, DataPacket_c
   //data_p.who = 1;
   data_p.mode = 0;
   data_p.counter = 0;
-  //std::vector<Address> v;
+  std::vector<Address> local_temp;
   //data_p.self_id = default_root_address;
   memcpy(data_p.self_id, default_root_address.value, 5);
   //unsigned long previousMillis = 0;
@@ -45,7 +51,7 @@ bool RF24truemesh::discovery_mode_parent(DataPacket_parent &data_p, DataPacket_c
   radio.openWritingPipe(default_broadcast_address.value);
 
   while (data_p.counter <= 2) {
-    temp.clear();
+    local_temp.clear();
     radio.startWrite(&data_p, sizeof(data_p), true); //Sends broadcast message
     radio.txStandBy(); //Prevents message from not getting sent
     startMillis = millis();
@@ -60,7 +66,7 @@ bool RF24truemesh::discovery_mode_parent(DataPacket_parent &data_p, DataPacket_c
 
         isUnique = true;
 
-        for (Address &addr : temp) {
+        for (Address &addr : local_temp) {
           if ((memcmp(addr.value, data_c.random_id, 5) == 0)) {
             isUnique = false;
             radio.flush_rx();
@@ -69,7 +75,7 @@ bool RF24truemesh::discovery_mode_parent(DataPacket_parent &data_p, DataPacket_c
         }
         if (isUnique) {
           memcpy(addr2.value, data_c.random_id, 5);
-          temp.push_back(addr2);
+          local_temp.push_back(addr2);
         } else {
           radio.flush_rx();
           break;
@@ -77,12 +83,15 @@ bool RF24truemesh::discovery_mode_parent(DataPacket_parent &data_p, DataPacket_c
         vTaskDelay(pdMS_TO_TICKS(1));
       }
     }
+    
     radio.stopListening(); //Stops listening(can write now)
     if (isUnique) {
       data_p.index = data_p.counter;
+      temp = local_temp; //temp updated with index
     }
     if (data_p.counter == 0) {
-      lengthmax = temp.size();
+      lengthmax = local_temp.size();
+      temp = local_temp; //Initial temp update
     } else {
       if(lengthmax != temp.size()) {
         
@@ -113,7 +122,7 @@ bool RF24truemesh::assignment_mode_parent(DataPacket_parent &data_p, DataPacket_
   
   for(Address &addr : temp){
     local_counter = 0;
-    if(!node_access){
+    if(!node_access){ // WARNING: If single node access fails, entire process stops mid way
       return false;
     }
     data_p.unique = 1;
@@ -121,7 +130,7 @@ bool RF24truemesh::assignment_mode_parent(DataPacket_parent &data_p, DataPacket_
     //Unique address check(global check)
     for(Address &addr2 : usedAddresses){
       if((memcmp(addr.value, addr2.value, 5) == 0)){
-        generateRandomAddress(data_p.supply_id); // WARNING: Does not ensure unique address in temp
+        generateRandomAddress(data_p.supply_id); //Generates unique address compared with usedAddresses and temp
         data_p.unique = 0;
         radio.flush_rx();
         break;
@@ -146,8 +155,10 @@ bool RF24truemesh::assignment_mode_parent(DataPacket_parent &data_p, DataPacket_
           heard = true;
           if(data_p.unique){
             usedAddresses.push_back(addr);
+            reachable.push_back(addr);
           }else{
             usedAddresses.push_back(Address(data_p.supply_id));
+            reachable.push_back(data_p.supply_id);
           }
         }
         vTaskDelay(pdMS_TO_TICKS(1));
@@ -155,8 +166,8 @@ bool RF24truemesh::assignment_mode_parent(DataPacket_parent &data_p, DataPacket_
       
       if(heard){
         node_access = true;
-        radio.flush_rx();
-        break; 
+        radio.flush_rx(); // clearing any messages stored in rx fifo
+        break;
       }else{
         radio.stopListening(); //Stops listening(half duplex)
         radio.openReadingPipe(1, default_broadcast_address.value);

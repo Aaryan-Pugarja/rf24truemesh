@@ -40,3 +40,19 @@ struct DataPacket_child {
     correspond_counter = 0;
   }
 };
+
+struct DataPacket_prime_root {
+  bool form_tree;
+  uint8_t counter;
+  byte self_id[5];
+  byte supply_id[5];
+  uint8_t index;
+
+  DataPacket_prime_root() {
+    form_tree = 0;
+    counter = 0;
+    //memcpy(self_id, default_root_address, 5);
+    index = 0;
+  }
+};
+

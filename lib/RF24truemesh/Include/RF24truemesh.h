@@ -20,10 +20,15 @@ public:
     bool discovery_mode_parent(DataPacket_parent &data_p, DataPacket_child &data_c);
     bool assignment_mode_parent(DataPacket_parent &data_p, DataPacket_child &data_c);
     bool discovery_mode_child(DataPacket_parent &data_p, DataPacket_child &data_c);
+    bool tree_formation_prime_root();
+    bool tree_formation_child_root();
     
     std::vector<Address> usedAddresses;
     std::vector<Address> reachable;
     std::vector<Address> temp;
+    
+    bool initialised; // may be redundant
+    bool tree_formed;
     
     private:
     RF24& radio;
@@ -31,6 +36,7 @@ public:
     Address final_address;
     Address default_broadcast_address;
     Address default_root_address;
+    Address final_root_address; // For tree configuration
     void generateRandomAddress(byte[5]);
     
 };

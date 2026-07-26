@@ -105,7 +105,7 @@ bool RF24truemesh::discovery_mode_parent(DataPacket_parent &data_p, DataPacket_c
 
 bool RF24truemesh::assignment_mode_parent(DataPacket_parent &data_p, DataPacket_child &data_c) {
   data_p.mode = 1;
-  memcpy(data_p.self_id, default_root_address.value, 5);
+  //memcpy(data_p.self_id, default_root_address.value, 5);
   //unsigned long startMillis = 0;
   unsigned long startMillis = 0;
   //std::vector<Address> v2;
@@ -114,6 +114,8 @@ bool RF24truemesh::assignment_mode_parent(DataPacket_parent &data_p, DataPacket_
   uint8_t local_counter = 0;
   
   //First assignment message
+  generateRandomAddress(data_p.supply_id);
+  usedAddresses.push_back(Address(data_p.supply_id));
   radio.stopListening(); //Stops listening(half duplex)
   radio.openReadingPipe(1,default_broadcast_address.value);
   radio.openWritingPipe(default_broadcast_address.value);
@@ -206,7 +208,7 @@ bool RF24truemesh::discovery_mode_child(DataPacket_parent &data_p, DataPacket_ch
   unsigned long startMillis = millis();
 
   while (data_p.mode==0) {
-    while (radio.available()) {
+    if (radio.available()) {
       radio.read(&data_p, sizeof(data_p));
       radio.stopListening();
       if (data_p.mode == 0) {
@@ -225,12 +227,13 @@ bool RF24truemesh::discovery_mode_child(DataPacket_parent &data_p, DataPacket_ch
         return false;
       }
     }
+    vTaskDelay(pdMS_TO_TICKS(1));
   }
-  
   
   uint8_t pipe;
   bool assigned = false;
   radio.startListening();
+  final_root_address = data_p.self_id;
   memcpy(final_address.value, random_list[data_p.index].value, 5);
   radio.openReadingPipe(1, final_address.value);
   startMillis = millis();
@@ -239,7 +242,7 @@ bool RF24truemesh::discovery_mode_child(DataPacket_parent &data_p, DataPacket_ch
       radio.read(&data_p, sizeof(data_p));
       assigned = true;
       if(data_p.unique == 0){
-        memcpy(final_address.value, data_p.supply_id, 5);  // Change default_root_address and update when receiving assignment message
+        memcpy(final_address.value, data_p.supply_id, 5);  // Change final_address and update when receiving assignment message
       }
       radio.stopListening();
       radio.startWrite(&data_c, sizeof(data_c), true);
@@ -248,3 +251,8 @@ bool RF24truemesh::discovery_mode_child(DataPacket_parent &data_p, DataPacket_ch
   }
   return(assigned);
 }
+
+
+// bool RF24truemesh::tree_formation(){
+  
+// }

@@ -120,11 +120,10 @@ bool RF24truemesh::assignment_mode_parent(DataPacket_parent &data_p, DataPacket_
   radio.startWrite(&data_p, sizeof(data_p), true); //Sends ID assignment message
   radio.txStandBy(); //Prevents message from not getting sent
   
-  for(Address &addr : temp){
+  Address addr;
+  for (size_t i = 0; i < temp.size(); ){
+    addr = temp.at(i);
     local_counter = 0;
-    if(!node_access){ // WARNING: If single node access fails, entire process stops mid way
-      return false;
-    }
     data_p.unique = 1;
     
     //Unique address check(global check)
@@ -177,6 +176,11 @@ bool RF24truemesh::assignment_mode_parent(DataPacket_parent &data_p, DataPacket_
         local_counter++;
         node_access = false;
       }
+    }
+    if (!node_access) {
+        temp.erase(temp.begin() + i); //If node access failed, removes it from temp, child node is expected to initiate connection beyond this point
+    }else{
+      i++;
     }
   }
   return true;
